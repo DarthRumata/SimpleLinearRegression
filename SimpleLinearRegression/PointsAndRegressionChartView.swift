@@ -15,13 +15,15 @@ struct DataPoint: Identifiable {
 
 struct PointsAndRegressionChartView: View {
     let dataPoints: [DataPoint]
-    let model: (w: Double, b: Double)
+    let model: RegressionModel
+    let weights: [Double]
+    let bias: Double
     
     var body: some View {
         let x1: Double = dataPoints.min(by: { $0.x < $1.x })?.x ?? 0
         let x2: Double = dataPoints.max(by: { $0.x < $1.x })?.x ?? 0
-        let firstPoint = DataPoint(x: x1, y: model.b + model.w * x1)
-        let secondPoint = DataPoint(x: x2, y: model.b + model.w * x2)
+        let firstPoint = DataPoint(x: x1, y: model.hypothesis(weights: weights, x: [x1], bias: bias))
+        let secondPoint = DataPoint(x: x2, y: model.hypothesis(weights: weights, x: [x2], bias: bias))
         
         Chart {
             // Optionally, show the individual points as well.
@@ -54,6 +56,8 @@ struct PointsAndRegressionChartView: View {
             DataPoint(x: 1, y: 0.7),
             DataPoint(x: 0, y: 0.2)
         ],
-        model: (1, 2)
+        model: .simpleLinear,
+        weights: [1.0],
+        bias: 1
     )
 }

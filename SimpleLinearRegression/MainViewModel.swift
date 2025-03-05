@@ -30,7 +30,7 @@ class MainViewModel {
     ]
     
     let y: [Double] = [
-        0, 5.9, 6.7, 7, 7.5, 8.7, 9.7, 9.8, 9.8, 9.9,
+        8, 5.9, 6.7, 7, 7.5, 8.7, 9.7, 9.8, 9.8, 9.9,
         10, 12.2, 12.2, 13.4, 19.7, 19.9, 32, 40, 40, 51.5,
         55, 60, 69, 70, 78, 78, 80, 85, 85, 87,
         90, 100, 110, 110, 110, 115, 120, 120, 120, 120,
@@ -45,24 +45,37 @@ class MainViewModel {
         650, 680, 685, 685, 690, 700, 700, 700, 700, 700,
         714, 720, 725, 770, 800, 820, 820, 840, 850, 850,
         900, 900, 920, 925, 950, 950, 955, 975, 1000, 1000,
-        1000, 1000, 1000, 1015, 1100, 1100, 1250, 1550, 1600, 1650
+        1000, 1000, 1000, 1015, 1100, 1100, 1250, 1550, 1600
     ]
 
-    var w: Double = 0
+    var w: [Double]
     var b: Double = 0
     var learningRate: Double = 0.0001
+    var lambda: Double = 0.01
+    var selectedModel: RegressionModel {
+        didSet {
+            w = Self.defaultWeights(for: selectedModel)
+        }
+    }
     private(set) var step = 0
     
     // [Step: Cost]
     private(set) var costHistory = [Double]()
     // [Step: (w, b)]
-    private(set) var paramsHistory = [(w: Double, b: Double)]()
+    private(set) var paramsHistory = [(w: [Double], b: Double)]()
     
     var dataPoints: [DataPoint] {
         zip(x, y).map { DataPoint(x: $0, y: $1) }
     }
+    var currentFormula: String {
+        selectedModel.modelDescription(featureCount: 1)
+    }
     
     init() {
+        let defaultModel = RegressionModel.simpleLinear
+        selectedModel = defaultModel
+        w = Self.defaultWeights(for: defaultModel)
+        
         updateHistory()
     }
     
@@ -74,9 +87,9 @@ class MainViewModel {
     }
     
     func resetTapped() {
-        w = 0
+        w = Self.defaultWeights(for: selectedModel)
         b = 0
-        learningRate = 0
+        learningRate = 0.0001
         step = 0
         costHistory.removeAll()
         paramsHistory.removeAll()
@@ -84,31 +97,26 @@ class MainViewModel {
     }
     
     private func calculateCost() -> Double {
-        dataPoints.reduce(0) { result, dataPoint in
-            result + pow(hypothesis(x: dataPoint.x) - dataPoint.y, 2)
-        } / Double(dataPoints.count) / 2
-    }
-    
-    private func hypothesis(x: Double) -> Double {
-        w * x + b
+        selectedModel.calculateCost(x: x.map { [$0] }, y: y, weights: w, bias: b)
     }
     
     private func calculateGradients() {
-        let weightGradient = dataPoints.reduce(0) { result, dataPoint in
-            result + (hypothesis(x: dataPoint.x) - dataPoint.y) * dataPoint.x
-        } / Double(dataPoints.count)
+        let (wGradient, bGradient) = selectedModel.calculateGradient(x: x.map { [$0] }, y: y, weights: w, bias: b)
         
-        let biasGradient = dataPoints.reduce(0) { result, dataPoint in
-            result + (hypothesis(x: dataPoint.x) - dataPoint.y)
-        } / Double(dataPoints.count)
+        for j in 0..<w.count {
+            w[j] -= learningRate * wGradient[j]
+        }
         
-        w -= learningRate * weightGradient
-        b -= learningRate * biasGradient
+        b -= learningRate * bGradient
     }
     
     private func updateHistory() {
         let cost = calculateCost()
         costHistory.append(cost)
         paramsHistory.append((w, b))
+    }
+    
+    private static func defaultWeights(for model: RegressionModel) -> [Double] {
+        Array(repeating: 0, count: model.weightsCount(featureCount: 1))
     }
 }

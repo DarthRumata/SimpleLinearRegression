@@ -8,39 +8,48 @@
 import SwiftUI
 
 struct MainView: View {
-    @State var model = MainViewModel()
+    @State var viewModel = MainViewModel()
 
     var body: some View {
         VStack {
             makeControls()
 
             PointsAndRegressionChartView(
-                dataPoints: model.dataPoints,
-                model: (w: model.w, b: model.b)
+                dataPoints: viewModel.dataPoints,
+                model: viewModel.selectedModel,
+                weights: viewModel.w,
+                bias: viewModel.b
             )
             
             CostChartView(
-                costs: model.costHistory,
-                currentStep: model.step
+                costs: viewModel.costHistory,
+                currentStep: viewModel.step
             )
         }
         .padding()
     }
     
     @ViewBuilder func makeControls() -> some View {
-        let wText = Binding<String>(
-            get: { String(model.w) },
-            set: { model.w = Double($0) ?? 0 }
-        )
         let bText = Binding<String>(
-            get: { String(model.b) },
-            set: { model.b = min(max(Double($0) ?? 0, 0), 100) }
+            get: { String(viewModel.b) },
+            set: { viewModel.b = min(max(Double($0) ?? 0, 0), 100) }
         )
         let lText = Binding<String>(
-            get: { String(model.learningRate.formatted()) },
-            set: { model.learningRate = Double($0) ?? 0 }
+            get: { String(viewModel.learningRate.formatted()) },
+            set: { viewModel.learningRate = Double($0) ?? 0 }
         )
-        Text("Model: \(model.w.formatted())*x + \(model.b.formatted())")
+        HStack {
+            Picker("Model:", selection: $viewModel.selectedModel) {
+                ForEach(RegressionModel.models) { model in
+                    Text(model.name)
+                        .tag(model)
+                }
+            }
+            .pickerStyle(.menu)
+            .fixedSize()
+            
+            Text("Model function: \(viewModel.currentFormula)")
+        }
         
         HStack {
             Text("Learning rate: ")
@@ -51,12 +60,19 @@ struct MainView: View {
         }
         
         HStack(spacing: 5) {
-            Text("W =")
-            TextField(text: wText) {
-                Text("W")
+            ForEach(Array(zip(viewModel.w.indices, viewModel.w)), id: \.0) { i, wi in
+                let wiText = Binding<String>(
+                    get: { String(wi) },
+                    set: { viewModel.w[i] = Double($0) ?? 0 }
+                )
+                Text("W\(i) =")
+                TextField(text: wiText) {
+                    Text("W\(i)")
+                }
+                .frame(width: 70)
+                .padding(.trailing, 15)
             }
-            .frame(width: 70)
-            .padding(.trailing, 15)
+            
 
             Text("B = ")
             TextField(text: bText) {
@@ -68,14 +84,14 @@ struct MainView: View {
         }
         
         HStack {
-            Text("Step: \(model.step)")
+            Text("Step: \(viewModel.step)")
             Button {
-                model.nextStepTapped()
+                viewModel.nextStepTapped()
             } label: {
                 Text("Next step")
             }
             Button {
-                model.resetTapped()
+                viewModel.resetTapped()
             } label: {
                 Text("Reset")
             }
