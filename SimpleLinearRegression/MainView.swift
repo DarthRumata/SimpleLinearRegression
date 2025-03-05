@@ -85,17 +85,30 @@ struct MainView: View {
         
         HStack {
             Text("Step: \(viewModel.step)")
+            
             Button {
                 viewModel.nextStepTapped()
             } label: {
                 Text("Next step")
             }
+            
             Button {
                 viewModel.resetTapped()
             } label: {
                 Text("Reset")
             }
+            
+            Button {
+                viewModel.optimizeModel()
+            } label: {
+                Text("Auto run")
+            }
+            
             Spacer()
+            
+            Toggle(isOn: $viewModel.useNormalization) {
+                Text("Is normalization on:")
+            }
         }
         
     }

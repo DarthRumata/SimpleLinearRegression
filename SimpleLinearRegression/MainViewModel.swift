@@ -10,7 +10,32 @@ import Observation
 
 @Observable
 class MainViewModel {
-    let x: [Double] = [
+    var w: [Double]
+    var b: Double = 0
+    var learningRate: Double = 0.0001
+    var lambda: Double = 0.01 // regularization parameter
+    var precisionThreshold: Double = 0.001
+    var selectedModel: RegressionModel {
+        didSet {
+            w = Self.defaultWeights(for: selectedModel)
+        }
+    }
+    private(set) var step = 0
+    var useNormalization: Bool = true
+    
+    // [Step: Cost]
+    private(set) var costHistory = [Double]()
+    // [Step: (w, b)]
+    private(set) var paramsHistory = [(w: [Double], b: Double)]()
+    
+    var dataPoints: [DataPoint] {
+        zip(x, y).map { DataPoint(x: $0, y: $1) }
+    }
+    var currentFormula: String {
+        selectedModel.modelDescription(featureCount: 1)
+    }
+    
+    private let x: [Double] = [
         19, 7.5, 9.3, 10.1, 10, 10.8, 10.4, 10.7, 11.4, 11.3,
         11.3, 11.5, 12.1, 11.7, 13.2, 13.8, 12.5, 12.9, 13.8, 15,
         13.5, 14.3, 16.5, 15.7, 17.5, 16.8, 17.2, 17.8, 18.2, 18.2,
@@ -29,7 +54,7 @@ class MainViewModel {
         40.2, 41.1, 37, 39, 40.1, 52, 56, 56, 59
     ]
     
-    let y: [Double] = [
+    private let y: [Double] = [
         8, 5.9, 6.7, 7, 7.5, 8.7, 9.7, 9.8, 9.8, 9.9,
         10, 12.2, 12.2, 13.4, 19.7, 19.9, 32, 40, 40, 51.5,
         55, 60, 69, 70, 78, 78, 80, 85, 85, 87,
@@ -47,29 +72,12 @@ class MainViewModel {
         900, 900, 920, 925, 950, 950, 955, 975, 1000, 1000,
         1000, 1000, 1000, 1015, 1100, 1100, 1250, 1550, 1600
     ]
-
-    var w: [Double]
-    var b: Double = 0
-    var learningRate: Double = 0.0001
-    var lambda: Double = 0.01
-    var selectedModel: RegressionModel {
-        didSet {
-            w = Self.defaultWeights(for: selectedModel)
-        }
-    }
-    private(set) var step = 0
     
-    // [Step: Cost]
-    private(set) var costHistory = [Double]()
-    // [Step: (w, b)]
-    private(set) var paramsHistory = [(w: [Double], b: Double)]()
+    @ObservationIgnored
+    private lazy var xNorm = zScoreNormalization(x)
     
-    var dataPoints: [DataPoint] {
-        zip(x, y).map { DataPoint(x: $0, y: $1) }
-    }
-    var currentFormula: String {
-        selectedModel.modelDescription(featureCount: 1)
-    }
+    @ObservationIgnored
+    private lazy var yNorm = zScoreNormalization(y)
     
     init() {
         let defaultModel = RegressionModel.simpleLinear
@@ -80,28 +88,46 @@ class MainViewModel {
     }
     
     func nextStepTapped() {
-        calculateGradients()
-        updateHistory()
-        
-        step += 1
+        runOneStep()
     }
     
     func resetTapped() {
         w = Self.defaultWeights(for: selectedModel)
         b = 0
-        learningRate = 0.0001
         step = 0
         costHistory.removeAll()
         paramsHistory.removeAll()
         updateHistory()
     }
     
+    func optimizeModel() {
+        var costDeltaPercent: Double = 0
+        repeat {
+            runOneStep()
+            
+            let lastCost = costHistory.last!
+            let previousCost = costHistory[costHistory.count - 2]
+            costDeltaPercent = (previousCost - lastCost) / previousCost
+        } while costDeltaPercent > precisionThreshold
+    }
+    
+    private func runOneStep() {
+        calculateGradients()
+        updateHistory()
+        
+        step += 1
+    }
+    
     private func calculateCost() -> Double {
-        selectedModel.calculateCost(x: x.map { [$0] }, y: y, weights: w, bias: b)
+        let featuresData = useNormalization ? xNorm : x
+        let targets = useNormalization ? yNorm : x
+        return selectedModel.calculateCost(x: x.map { [$0] }, y: targets, weights: w, bias: b)
     }
     
     private func calculateGradients() {
-        let (wGradient, bGradient) = selectedModel.calculateGradient(x: x.map { [$0] }, y: y, weights: w, bias: b)
+        let featuresData = useNormalization ? xNorm : x
+        let targets = useNormalization ? yNorm : x
+        let (wGradient, bGradient) = selectedModel.calculateGradient(x: featuresData.map { [$0] }, y: targets, weights: w, bias: b)
         
         for j in 0..<w.count {
             w[j] -= learningRate * wGradient[j]
@@ -118,5 +144,18 @@ class MainViewModel {
     
     private static func defaultWeights(for model: RegressionModel) -> [Double] {
         Array(repeating: 0, count: model.weightsCount(featureCount: 1))
+    }
+    
+    private func zScoreNormalization(_ array: [Double]) -> [Double] {
+        let (standardDeviation, mean) = self.standardDeviationAndMean(array)
+        return array.map { ($0 - mean) / standardDeviation }
+    }
+    
+    private func standardDeviationAndMean(_ array: [Double]) -> (sigma: Double, mean: Double) {
+        let sum = array.reduce(0, +)
+        let mean = sum / Double(array.count)
+        let squaredDifferences = array.map { pow($0 - mean, 2) }
+        let variance = squaredDifferences.reduce(0, +) / Double(array.count)
+        return (sqrt(variance), mean)
     }
 }

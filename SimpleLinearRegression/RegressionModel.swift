@@ -53,6 +53,8 @@ enum RegressionType {
             case .linear:
                 loss = pow(y[i] - prediction, 2)
             case .logistic:
+                let epsilon: Double = 1e-15
+                let clippedPrediction = min(max(prediction, epsilon), 1.0 - epsilon)
                 loss = -(y[i] * log(prediction) + (1 - y[i]) * log(1 - prediction))
             }
             
@@ -91,7 +93,13 @@ enum RegressionType {
     }
     
     private func sigmoid(_ x: Double) -> Double {
-        return 1.0 / (1.0 + exp(-x))
+        if x >= 0 {
+            let expNegX = exp(-x)
+            return 1.0 / (1.0 + expNegX)
+        } else {
+            let expX = exp(x)
+            return expX / (1.0 + expX)
+        }
     }
     
     func polynomialTerms(featureCount: Int, maxDegree: Int) -> [[Int]] {
