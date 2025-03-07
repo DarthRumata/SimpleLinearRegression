@@ -6,11 +6,27 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		1298B1DF2D79553C0048154C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 12D8261F2D6C2A9900563FD8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 12D826262D6C2A9900563FD8;
+			remoteInfo = SimpleLinearRegression;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		1298B1DB2D79553C0048154C /* SimpleLinearRegressionTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SimpleLinearRegressionTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		12D826272D6C2A9900563FD8 /* SimpleLinearRegression.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SimpleLinearRegression.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		1298B1DC2D79553C0048154C /* SimpleLinearRegressionTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SimpleLinearRegressionTests;
+			sourceTree = "<group>";
+		};
 		12D826292D6C2A9900563FD8 /* SimpleLinearRegression */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = SimpleLinearRegression;
@@ -19,6 +35,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		1298B1D82D79553C0048154C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		12D826242D6C2A9900563FD8 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -33,6 +56,7 @@
 			isa = PBXGroup;
 			children = (
 				12D826292D6C2A9900563FD8 /* SimpleLinearRegression */,
+				1298B1DC2D79553C0048154C /* SimpleLinearRegressionTests */,
 				12D826282D6C2A9900563FD8 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +65,7 @@
 			isa = PBXGroup;
 			children = (
 				12D826272D6C2A9900563FD8 /* SimpleLinearRegression.app */,
+				1298B1DB2D79553C0048154C /* SimpleLinearRegressionTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,6 +73,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		1298B1DA2D79553C0048154C /* SimpleLinearRegressionTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1298B1E12D79553C0048154C /* Build configuration list for PBXNativeTarget "SimpleLinearRegressionTests" */;
+			buildPhases = (
+				1298B1D72D79553C0048154C /* Sources */,
+				1298B1D82D79553C0048154C /* Frameworks */,
+				1298B1D92D79553C0048154C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1298B1E02D79553C0048154C /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				1298B1DC2D79553C0048154C /* SimpleLinearRegressionTests */,
+			);
+			name = SimpleLinearRegressionTests;
+			packageProductDependencies = (
+			);
+			productName = SimpleLinearRegressionTests;
+			productReference = 1298B1DB2D79553C0048154C /* SimpleLinearRegressionTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		12D826262D6C2A9900563FD8 /* SimpleLinearRegression */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 12D826362D6C2A9A00563FD8 /* Build configuration list for PBXNativeTarget "SimpleLinearRegression" */;
@@ -80,6 +128,9 @@
 				LastSwiftUpdateCheck = 1620;
 				LastUpgradeCheck = 1620;
 				TargetAttributes = {
+					1298B1DA2D79553C0048154C = {
+						CreatedOnToolsVersion = 16.2;
+					};
 					12D826262D6C2A9900563FD8 = {
 						CreatedOnToolsVersion = 16.2;
 					};
@@ -100,11 +151,19 @@
 			projectRoot = "";
 			targets = (
 				12D826262D6C2A9900563FD8 /* SimpleLinearRegression */,
+				1298B1DA2D79553C0048154C /* SimpleLinearRegressionTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		1298B1D92D79553C0048154C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		12D826252D6C2A9900563FD8 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -115,6 +174,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		1298B1D72D79553C0048154C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		12D826232D6C2A9900563FD8 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -124,7 +190,45 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		1298B1E02D79553C0048154C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 12D826262D6C2A9900563FD8 /* SimpleLinearRegression */;
+			targetProxy = 1298B1DF2D79553C0048154C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		1298B1E22D79553C0048154C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4GS5NBU7N5;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.darkmatter.SimpleLinearRegressionTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		1298B1E32D79553C0048154C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4GS5NBU7N5;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.darkmatter.SimpleLinearRegressionTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
 		12D826342D6C2A9A00563FD8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -300,6 +404,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		1298B1E12D79553C0048154C /* Build configuration list for PBXNativeTarget "SimpleLinearRegressionTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1298B1E22D79553C0048154C /* Debug */,
+				1298B1E32D79553C0048154C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		12D826222D6C2A9900563FD8 /* Build configuration list for PBXProject "SimpleLinearRegression" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

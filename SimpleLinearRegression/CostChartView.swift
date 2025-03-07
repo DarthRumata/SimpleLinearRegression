@@ -9,27 +9,29 @@ import SwiftUI
 
 struct CostChartView: View {
     let costs: [Double]
-    let currentStep: Int
     
     var body: some View {
-        let currentCost = costs[currentStep]
-        Chart {
-            // Optionally, show the individual points as well.
-            ForEach(Array(zip(costs.indices, costs)), id: \.0) { costHistory in
-                LineMark(
-                    x: .value("1", costHistory.0),
-                    y: .value("1", costHistory.1)
-                )
-                .foregroundStyle(.blue)
+        if !costs.isEmpty {
+            let currentStep = costs.count - 1
+            let currentCost = costs[currentStep]
+            Chart {
+                // Optionally, show the individual points as well.
+                ForEach(Array(zip(costs.indices, costs)), id: \.0) { costHistory in
+                    LineMark(
+                        x: .value("1", costHistory.0),
+                        y: .value("1", costHistory.1)
+                    )
+                    .foregroundStyle(.blue)
+                }
+                .interpolationMethod(.catmullRom)
+                
+                PointMark(x: .value("X", currentStep), y: .value("Y", currentCost))
+                    .foregroundStyle(.red)
             }
-            .interpolationMethod(.catmullRom)
-            
-            PointMark(x: .value("X", currentStep), y: .value("Y", currentCost))
-                .foregroundStyle(.red)
+            .chartXAxisLabel("Steps")
+            .chartYAxisLabel("Cost")
+            .padding()
         }
-        .chartXAxisLabel("Steps")
-        .chartYAxisLabel("Cost")
-        .padding()
     }
 }
 
@@ -40,7 +42,6 @@ struct CostChartView: View {
             5,
             3,
             1
-        ],
-        currentStep: 2
+        ]
     )
 }

@@ -44,8 +44,9 @@ enum RegressionType {
     func calculateCost(x: [[Double]], y: [Double], weights: [Double], polynomialDegree: Int, bias: Double) -> Double {
         var totalCost: Double = 0
         let terms = polynomialTerms(featureCount: x[0].count, maxDegree: polynomialDegree)
+        let m = y.count
         
-        for i in 0 ..< x.count {
+        for i in 0 ..< m {
             let prediction = hypothesis(weights: weights, x: x[i], terms: terms, bias: bias)
             
             let loss: Double
@@ -55,13 +56,13 @@ enum RegressionType {
             case .logistic:
                 let epsilon: Double = 1e-15
                 let clippedPrediction = min(max(prediction, epsilon), 1.0 - epsilon)
-                loss = -(y[i] * log(prediction) + (1 - y[i]) * log(1 - prediction))
+                loss = -(y[i] * log(clippedPrediction) + (1 - y[i]) * log(1 - clippedPrediction))
             }
             
             totalCost += loss
         }
             
-        totalCost = totalCost / Double(x.count) / (self == .linear ? 2.0 : 1.0)
+        totalCost = totalCost / Double(m) / (self == .linear ? 2.0 : 1.0)
        
         return totalCost
     }
@@ -103,6 +104,10 @@ enum RegressionType {
     }
     
     func polynomialTerms(featureCount: Int, maxDegree: Int) -> [[Int]] {
+        guard featureCount > 0 && maxDegree > 0 else {
+            return []
+        }
+        
         var terms: [[Int]] = []
         
         func generate(current: [Int], position: Int, remainingDegree: Int) {
@@ -137,6 +142,10 @@ struct RegressionModel: Identifiable, Hashable {
     
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
+    }
+    
+    func defaultWeights(featureCount: Int) -> [Double] {
+        Array(repeating: 0, count: weightsCount(featureCount: featureCount))
     }
     
     func hypothesis(weights: [Double], x: [Double], bias: Double) -> Double {

@@ -8,31 +8,82 @@
 import Foundation
 import Observation
 
+typealias RegressionUpdate = (weights: [Double], bias: Double, step: Int, cost: Double)
+
+private enum Constants {
+    static let updateInterval: TimeInterval = 0.05
+}
+
 @Observable
 class MainViewModel {
     var w: [Double]
     var b: Double = 0
-    var learningRate: Double = 0.0001
-    var lambda: Double = 0.01 // regularization parameter
-    var precisionThreshold: Double = 0.001
-    var selectedModel: RegressionModel {
+    var learningRate: Double = 0.0001 {
         didSet {
-            w = Self.defaultWeights(for: selectedModel)
+            Task { @MainActor in
+                await regressionTrainer.updateLearningRate(learningRate)
+            }
         }
     }
-    private(set) var step = 0
-    var useNormalization: Bool = true
+
+    var lambda: Double = 0.01 { // regularization parameter
+        didSet {
+            Task { @MainActor in
+                await regressionTrainer.updateRegularization(lambda)
+            }
+        }
+    }
+
+    var precisionThreshold: Double = 0.001 {
+        didSet {
+            Task { @MainActor in
+                await regressionTrainer.updateLearningRate(precisionThreshold)
+            }
+        }
+    }
+
+    var selectedModel: RegressionModel {
+        willSet {
+            isChangingModel = true
+        }
+        didSet {
+            Task { @MainActor in
+                await regressionTrainer.updateModel(selectedModel)
+                let w = await regressionTrainer.w
+                let b = await regressionTrainer.b
+                self.w = w
+                self.b = b
+                step = 0
+                isChangingModel = false
+            }
+        }
+    }
+
+    var useNormalization: Bool = false
+    
+    private(set) var step: Int = 0
+    private(set) var isTraining: Bool = false
+    private(set) var isChangingModel: Bool = false
     
     // [Step: Cost]
     private(set) var costHistory = [Double]()
     // [Step: (w, b)]
     private(set) var paramsHistory = [(w: [Double], b: Double)]()
     
-    var dataPoints: [DataPoint] {
-        zip(x, y).map { DataPoint(x: $0, y: $1) }
+    var currentX: [[Double]] {
+        (useNormalization ? xNorm : x).map { [$0] }
     }
+
+    var currentY: [Double] {
+        y
+    }
+
     var currentFormula: String {
         selectedModel.modelDescription(featureCount: 1)
+    }
+    
+    var dataPoints: [DataPoint] {
+        zip(currentX.map { $0[0] }, currentY).map(DataPoint.init)
     }
     
     private let x: [Double] = [
@@ -73,89 +124,108 @@ class MainViewModel {
         1000, 1000, 1000, 1015, 1100, 1100, 1250, 1550, 1600
     ]
     
-    @ObservationIgnored
-    private lazy var xNorm = zScoreNormalization(x)
+    private let xNorm: [Double]
+    private let yNorm: [Double]
+    
+    private var lastUpdateTime: Date = .distantPast
+    private var pendingUpdate: RegressionUpdate?
     
     @ObservationIgnored
-    private lazy var yNorm = zScoreNormalization(y)
+    private lazy var regressionTrainer = RegressionTrainer(
+        x: currentX,
+        y: currentY,
+        w: w,
+        b: b,
+        learningRate: learningRate,
+        lambda: lambda,
+        precisionThreshold: precisionThreshold,
+        selectedModel: selectedModel
+    )
+    private let dataScaler = DataScaler()
     
     init() {
         let defaultModel = RegressionModel.simpleLinear
+        let w = defaultModel.defaultWeights(featureCount: 1)
         selectedModel = defaultModel
-        w = Self.defaultWeights(for: defaultModel)
+        self.w = w
+        xNorm = dataScaler.zScoreNormalization(x)
+        yNorm = dataScaler.zScoreNormalization(y)
         
-        updateHistory()
+        Task {
+            await costHistory.append(regressionTrainer.currentCost)
+        }
     }
     
     func nextStepTapped() {
-        runOneStep()
+        Task { @MainActor in
+            await regressionTrainer.runOneStep()
+            
+            let w = await regressionTrainer.w
+            let b = await regressionTrainer.b
+            let step = await regressionTrainer.step
+            let cost = await regressionTrainer.currentCost
+            
+            self.costHistory.append(cost)
+            print("Cost history: \(costHistory), step: \(step)")
+            self.paramsHistory.append((w, b))
+            self.w = w
+            self.b = b
+            self.step = step
+        }
     }
     
     func resetTapped() {
-        w = Self.defaultWeights(for: selectedModel)
-        b = 0
-        step = 0
         costHistory.removeAll()
         paramsHistory.removeAll()
-        updateHistory()
-    }
-    
-    func optimizeModel() {
-        var costDeltaPercent: Double = 0
-        repeat {
-            runOneStep()
-            
-            let lastCost = costHistory.last!
-            let previousCost = costHistory[costHistory.count - 2]
-            costDeltaPercent = (previousCost - lastCost) / previousCost
-        } while costDeltaPercent > precisionThreshold
-    }
-    
-    private func runOneStep() {
-        calculateGradients()
-        updateHistory()
         
-        step += 1
-    }
-    
-    private func calculateCost() -> Double {
-        let featuresData = useNormalization ? xNorm : x
-        let targets = useNormalization ? yNorm : x
-        return selectedModel.calculateCost(x: x.map { [$0] }, y: targets, weights: w, bias: b)
-    }
-    
-    private func calculateGradients() {
-        let featuresData = useNormalization ? xNorm : x
-        let targets = useNormalization ? yNorm : x
-        let (wGradient, bGradient) = selectedModel.calculateGradient(x: featuresData.map { [$0] }, y: targets, weights: w, bias: b)
-        
-        for j in 0..<w.count {
-            w[j] -= learningRate * wGradient[j]
+        Task { @MainActor in
+            await regressionTrainer.resetTraining()
+            w = await regressionTrainer.w
+            b = await regressionTrainer.b
+            step = 0
         }
+    }
+    
+    func trainModel() {
+        isTraining = true
         
-        b -= learningRate * bGradient
+        Task {
+            let updates = await regressionTrainer.startTraining()
+            
+            for await update in updates {
+                pendingUpdate = update
+                let now = Date()
+                if now.timeIntervalSince(lastUpdateTime) >= Constants.updateInterval {
+                    await applyPendingUpdate(update)
+                    lastUpdateTime = now
+                }
+            }
+            
+            if let pendingUpdate {
+                await applyPendingUpdate(pendingUpdate)
+            }
+            
+            await MainActor.run {
+                self.isTraining = false
+            }
+        }
     }
     
-    private func updateHistory() {
-        let cost = calculateCost()
-        costHistory.append(cost)
-        paramsHistory.append((w, b))
+    func stopTraining() {
+        Task {
+            await regressionTrainer.stopTraining()
+        }
     }
     
-    private static func defaultWeights(for model: RegressionModel) -> [Double] {
-        Array(repeating: 0, count: model.weightsCount(featureCount: 1))
-    }
-    
-    private func zScoreNormalization(_ array: [Double]) -> [Double] {
-        let (standardDeviation, mean) = self.standardDeviationAndMean(array)
-        return array.map { ($0 - mean) / standardDeviation }
-    }
-    
-    private func standardDeviationAndMean(_ array: [Double]) -> (sigma: Double, mean: Double) {
-        let sum = array.reduce(0, +)
-        let mean = sum / Double(array.count)
-        let squaredDifferences = array.map { pow($0 - mean, 2) }
-        let variance = squaredDifferences.reduce(0, +) / Double(array.count)
-        return (sqrt(variance), mean)
+    private func applyPendingUpdate(_ update: RegressionUpdate) async {
+        await MainActor.run {
+            self.w = update.weights
+            self.b = update.bias
+            self.costHistory.append(update.cost)
+            self.paramsHistory.append((update.weights, update.bias))
+            self.step = update.step
+            print("Applied update at step \(update.step), cost: \(update.cost)")
+            pendingUpdate = nil // Clear after applying
+        }
     }
 }

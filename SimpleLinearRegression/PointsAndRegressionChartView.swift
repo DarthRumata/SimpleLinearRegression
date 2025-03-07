@@ -19,12 +19,20 @@ struct PointsAndRegressionChartView: View {
     let weights: [Double]
     let bias: Double
     
-    var body: some View {
+    var modelPoints: [DataPoint] {
         let x1: Double = dataPoints.min(by: { $0.x < $1.x })?.x ?? 0
         let x2: Double = dataPoints.max(by: { $0.x < $1.x })?.x ?? 0
-        let firstPoint = DataPoint(x: x1, y: model.hypothesis(weights: weights, x: [x1], bias: bias))
-        let secondPoint = DataPoint(x: x2, y: model.hypothesis(weights: weights, x: [x2], bias: bias))
         
+        var modelPoints: [DataPoint] = []
+        let step: Double = (x2 - x1) / 10
+        for x in stride(from: x1, through: x2, by: step) {
+            let point = DataPoint(x: x, y: model.hypothesis(weights: weights, x: [x], bias: bias))
+            modelPoints.append(point)
+        }
+        return modelPoints
+    }
+    
+    var body: some View {
         Chart {
             // Optionally, show the individual points as well.
             ForEach(dataPoints) { point in
@@ -32,15 +40,16 @@ struct PointsAndRegressionChartView: View {
                     x: .value("X", point.x),
                     y: .value("Y", point.y)
                 )
+                .symbolSize(16)
             }
-            ForEach([firstPoint, secondPoint]) { point in
+            ForEach(modelPoints) { point in
                 LineMark(
                     x: .value("1", point.x),
                     y: .value("1", point.y)
                 )
                 .foregroundStyle(.red)
             }
-            .interpolationMethod(.linear)
+            .interpolationMethod(model.polynomialDegree == 1 ? .linear : .cardinal)
         }
         .chartXAxisLabel("Fish length (cm)")
         .chartYAxisLabel("Fish weight (g)")
@@ -56,8 +65,8 @@ struct PointsAndRegressionChartView: View {
             DataPoint(x: 1, y: 0.7),
             DataPoint(x: 0, y: 0.2)
         ],
-        model: .simpleLinear,
-        weights: [1.0],
+        model: .parabolaLinear,
+        weights: [1.0, 2],
         bias: 1
     )
 }
