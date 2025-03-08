@@ -36,7 +36,9 @@ actor RegressionTrainer {
         self.precisionThreshold = precisionThreshold
         self.selectedModel = selectedModel
         
-        currentCost = calculateCost()
+        Task {
+            await calculateAndUpdateCost()
+        }
     }
     
     func startTraining() async -> AsyncStream<(weights: [Double], bias: Double, step: Int, cost: Double)> {
@@ -90,7 +92,7 @@ actor RegressionTrainer {
     func runOneStep() async {
         await calculateGradients()
         previousCost = currentCost
-        currentCost = calculateCost()
+        await calculateAndUpdateCost()
         
         step += 1
     }
@@ -124,6 +126,13 @@ actor RegressionTrainer {
         resetTraining()
     }
     
+    func update(x: [[Double]], y: [Double]) {
+        self.x = x
+        self.y = y
+        
+        resetTraining()
+    }
+    
     private func calculateGradients() async {
         let (wGradient, bGradient) = selectedModel.calculateGradient(x: x, y: y, weights: w, bias: b)
        // print("Gradients: \(wGradient), \(bGradient)")
@@ -134,7 +143,7 @@ actor RegressionTrainer {
         b -= learningRate * bGradient
     }
     
-    private func calculateCost() -> Double {
-        return selectedModel.calculateCost(x: x, y: y, weights: w, bias: b)
+    private func calculateAndUpdateCost() async {
+        currentCost = selectedModel.calculateCost(x: x, y: y, weights: w, bias: b)
     }
 }

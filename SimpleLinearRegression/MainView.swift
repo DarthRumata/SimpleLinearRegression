@@ -13,26 +13,23 @@ struct MainView: View {
     var body: some View {
         VStack(alignment: .leading) {
             makeControls()
-
-            if !viewModel.isChangingModel {
-                HStack {
-                    PointsAndRegressionChartView(
-                        dataPoints: viewModel.dataPoints,
-                        model: viewModel.selectedModel,
-                        weights: viewModel.w,
-                        bias: viewModel.b
-                    )
-                    .frame(height: 400)
-                    
-                    ParametersChartView(parametersHistory: viewModel.paramsHistory)
-                }
-                
-                
-                CostChartView(
-                    costs: viewModel.costHistory
+            
+            HStack {
+                PointsAndRegressionChartView(
+                    dataPoints: viewModel.dataPoints,
+                    model: viewModel.selectedModel,
+                    weights: viewModel.w,
+                    bias: viewModel.b
                 )
-                .frame(height: 200)
+                .frame(height: 400)
+                    
+                ParametersChartView(parametersHistory: viewModel.paramsHistory)
             }
+                
+            CostChartView(
+                costs: viewModel.costHistory
+            )
+            .frame(height: 200)
             
             Spacer()
         }
@@ -60,6 +57,7 @@ struct MainView: View {
                 }
                 .frame(width: 70)
                 .padding(.trailing, 15)
+                .disabled(viewModel.isTraining)
             }
             
             Text("B = ")
@@ -67,6 +65,7 @@ struct MainView: View {
                 Text("B")
             }
             .frame(width: 70)
+            .disabled(viewModel.isTraining)
 
             Spacer()
         }
@@ -77,6 +76,7 @@ struct MainView: View {
             } label: {
                 Text("Next step")
             }
+            .disabled(viewModel.isTraining)
             
             Button {
                 viewModel.resetTapped()
@@ -101,6 +101,7 @@ struct MainView: View {
             Toggle(isOn: $viewModel.useNormalization) {
                 Text("Is normalization on?")
             }
+            .disabled(viewModel.isTraining)
         }
     }
     
@@ -114,6 +115,7 @@ struct MainView: View {
             }
             .pickerStyle(.menu)
             .fixedSize()
+            .disabled(viewModel.isTraining)
             
             Text("Model function: \(viewModel.currentFormula)")
         }

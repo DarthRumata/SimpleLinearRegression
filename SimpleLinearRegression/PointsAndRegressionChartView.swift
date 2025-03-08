@@ -20,6 +20,8 @@ struct PointsAndRegressionChartView: View {
     let bias: Double
     
     var modelPoints: [DataPoint] {
+        guard weights.count == model.weightsCount(featureCount: 1) else { return [] }
+        
         let x1: Double = dataPoints.min(by: { $0.x < $1.x })?.x ?? 0
         let x2: Double = dataPoints.max(by: { $0.x < $1.x })?.x ?? 0
         

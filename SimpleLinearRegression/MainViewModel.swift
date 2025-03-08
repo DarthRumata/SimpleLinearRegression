@@ -59,7 +59,23 @@ class MainViewModel {
         }
     }
 
-    var useNormalization: Bool = false
+    var useNormalization: Bool = false {
+        willSet {
+            isChangingModel = true
+        }
+        didSet {
+            Task { @MainActor in
+                await regressionTrainer.update(x: currentX, y: currentY)
+                let w = await regressionTrainer.w
+                let b = await regressionTrainer.b
+                self.w = w
+                self.b = b
+                step = 0
+                
+                isChangingModel = false
+            }
+        }
+    }
     
     private(set) var step: Int = 0
     private(set) var isTraining: Bool = false
@@ -75,7 +91,7 @@ class MainViewModel {
     }
 
     var currentY: [Double] {
-        y
+        useNormalization ? yNorm : y
     }
 
     var currentFormula: String {
