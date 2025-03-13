@@ -21,10 +21,10 @@ actor RegressionTrainer {
     private var y: [Double]
     private var previousCost: Double = 0
     
-    private var updateStream: AsyncStream<(weights: [Double], bias: Double, step: Int, cost: Double)>?
-    private var updateContinuation: AsyncStream<(weights: [Double], bias: Double, step: Int, cost: Double)>.Continuation?
+    private var updateStream: AsyncStream<(weights: [Double], bias: Double, step: Int, cost: Double)>
+    private var updateContinuation: AsyncStream<(weights: [Double], bias: Double, step: Int, cost: Double)>.Continuation
     
-    private var learingTask: Task<Void, Never>?
+    private var learingTask: Task<Void, Error>?
     
     init(x: [[Double]], y: [Double], w: [Double], b: Double, learningRate: Double, lambda: Double, precisionThreshold: Double, selectedModel: RegressionModel) {
         self.x = x
@@ -36,25 +36,24 @@ actor RegressionTrainer {
         self.precisionThreshold = precisionThreshold
         self.selectedModel = selectedModel
         
+        let (updateStream, updateContinuation) = AsyncStream<(weights: [Double], bias: Double, step: Int, cost: Double)>.makeStream(of: RegressionUpdate.self, bufferingPolicy: .bufferingNewest(1))
+        self.updateStream = updateStream
+        self.updateContinuation = updateContinuation
+        
         Task {
-            await calculateAndUpdateCost()
+            try await calculateAndUpdateCost()
         }
     }
     
-    func startTraining() async -> AsyncStream<(weights: [Double], bias: Double, step: Int, cost: Double)> {
+    func startTraining() async {
         isTraining = true
-        
-        let (updateStream, updateContinuation) = AsyncStream<(weights: [Double], bias: Double, step: Int, cost: Double)>.makeStream()
-        self.updateStream = updateStream
-        self.updateContinuation = updateContinuation
         
         learingTask = Task {
             defer {
                 isTraining = false
-                updateContinuation.finish()
-                self.updateStream = nil
-                self.updateContinuation = nil
-                print("Training task completed or cancelled")
+                let update = (weights: w, bias: b, step: step, cost: currentCost)
+                updateContinuation.yield(update)
+                print("Training task completed or cancelled on step: \(step)")
             }
             
             var costDeltaPercent: Double = 0
@@ -62,7 +61,7 @@ actor RegressionTrainer {
             repeat {
                 if Task.isCancelled { return }
                 
-                await runOneStep()
+                try await runOneStep()
                 
                 let update = (weights: w, bias: b, step: step, cost: currentCost)
                 updateContinuation.yield(update)
@@ -77,35 +76,36 @@ actor RegressionTrainer {
             print("Training stopped early: cost delta \(costDeltaPercent) is less than \(precisionThreshold)%")
             print("Parameters after early stopping: \(w), \(b). Cost: \(currentCost)")
         }
-        
-        return updateStream
     }
     
     func stopTraining() {
         learingTask?.cancel()
-        isTraining = false
-        updateContinuation?.finish()
-        updateStream = nil
-        updateContinuation = nil
     }
     
-    func runOneStep() async {
-        await calculateGradients()
+    func runOneStep() async throws {
+        try await calculateGradients()
         previousCost = currentCost
-        await calculateAndUpdateCost()
+        try await calculateAndUpdateCost()
         
         step += 1
     }
     
-    func resetTraining() {
-        w = selectedModel.defaultWeights(featureCount: x[0].count)
+    func resetTraining() async {
+        w = (try? selectedModel.defaultWeights(featureCount: x[0].count)) ?? []
         b = 0
         step = 0
-        currentCost = 0
+        do {
+            try await calculateAndUpdateCost()
+        } catch {
+            currentCost = 0
+        }
         previousCost = 0
+        
+        let update = (weights: w, bias: b, step: step, cost: currentCost)
+        updateContinuation.yield(update)
     }
     
-    func stateUpdates() -> AsyncStream<(weights: [Double], bias: Double, step: Int, cost: Double)>? {
+    func stateUpdates() -> AsyncStream<(weights: [Double], bias: Double, step: Int, cost: Double)> {
         updateStream
     }
     
@@ -121,29 +121,32 @@ actor RegressionTrainer {
         precisionThreshold = newPrecisionThreshold
     }
     
-    func updateModel(_ newModel: RegressionModel) {
+    func updateModel(_ newModel: RegressionModel) async {
         selectedModel = newModel
-        resetTraining()
+        await resetTraining()
     }
     
-    func update(x: [[Double]], y: [Double]) {
-        self.x = x
-        self.y = y
+    func update(preparedDataset: (x: [[Double]], y: [Double])) async {
+        self.x = preparedDataset.x
+        self.y = preparedDataset.y
         
-        resetTraining()
+        await resetTraining()
     }
     
-    private func calculateGradients() async {
-        let (wGradient, bGradient) = selectedModel.calculateGradient(x: x, y: y, weights: w, bias: b)
+    private func calculateGradients() async throws {
+        let (wGradient, bGradient) = try selectedModel.calculateGradient(x: x, y: y, weights: w, bias: b)
        // print("Gradients: \(wGradient), \(bGradient)")
         for j in 0..<w.count {
-            w[j] -= learningRate * wGradient[j]
+            let regularizationValue = lambda * w[j] / Double(x.count)
+            w[j] -= learningRate * (wGradient[j] + regularizationValue)
         }
         
         b -= learningRate * bGradient
     }
     
-    private func calculateAndUpdateCost() async {
-        currentCost = selectedModel.calculateCost(x: x, y: y, weights: w, bias: b)
+    private func calculateAndUpdateCost() async throws {
+        let regularizationCost = lambda * (w.reduce(0) { $0 + $1 * $1 }) / 2 / Double(x.count)
+        //print("Regularized cost:", regularizationCost)
+        currentCost = try selectedModel.calculateCost(x: x, y: y, weights: w, bias: b) + regularizationCost
     }
 }

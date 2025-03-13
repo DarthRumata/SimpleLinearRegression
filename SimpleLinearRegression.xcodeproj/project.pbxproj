@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		126C26E72D7D37DF006DC34E /* CSV in Frameworks */ = {isa = PBXBuildFile; productRef = 126C26E62D7D37DF006DC34E /* CSV */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		1298B1DF2D79553C0048154C /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -46,6 +50,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				126C26E72D7D37DF006DC34E /* CSV in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -113,6 +118,7 @@
 			);
 			name = SimpleLinearRegression;
 			packageProductDependencies = (
+				126C26E62D7D37DF006DC34E /* CSV */,
 			);
 			productName = SimpleLinearRegression;
 			productReference = 12D826272D6C2A9900563FD8 /* SimpleLinearRegression.app */;
@@ -145,6 +151,9 @@
 			);
 			mainGroup = 12D8261E2D6C2A9900563FD8;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				126C26E52D7D37DF006DC34E /* XCRemoteSwiftPackageReference "CSV" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 12D826282D6C2A9900563FD8 /* Products */;
 			projectDirPath = "";
@@ -289,6 +298,7 @@
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};
@@ -344,6 +354,7 @@
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
 		};
@@ -370,7 +381,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.darkmatter.SimpleLinearRegression;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};
@@ -397,7 +408,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.darkmatter.SimpleLinearRegression;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
 		};
@@ -432,6 +443,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		126C26E52D7D37DF006DC34E /* XCRemoteSwiftPackageReference "CSV" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/yaslab/CSV.swift";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 2.5.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		126C26E62D7D37DF006DC34E /* CSV */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 126C26E52D7D37DF006DC34E /* XCRemoteSwiftPackageReference "CSV" */;
+			productName = CSV;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 12D8261F2D6C2A9900563FD8 /* Project object */;
 }

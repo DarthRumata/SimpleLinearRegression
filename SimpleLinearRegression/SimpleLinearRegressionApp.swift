@@ -12,6 +12,9 @@ struct SimpleLinearRegressionApp: App {
     var body: some Scene {
         WindowGroup {
             MainView()
+                .frame(minWidth: 400, idealWidth: 850, maxWidth: .infinity, minHeight: 300, idealHeight: 650, maxHeight: .infinity)
         }
+        .defaultPosition(.center)
+        .windowResizability(.contentMinSize)
     }
 }

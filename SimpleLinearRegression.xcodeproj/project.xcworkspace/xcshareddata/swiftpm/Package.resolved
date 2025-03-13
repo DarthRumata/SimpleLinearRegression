@@ -1,0 +1,15 @@
+{
+  "originHash" : "f80f45d75a222e54fc7ac6437cf4daff6c5c48e0027f6de1c9f2dcfb925a9e2e",
+  "pins" : [
+    {
+      "identity" : "csv.swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/yaslab/CSV.swift",
+      "state" : {
+        "revision" : "b4371dc833ba22ab6ead90fb63d267c3cf9ce773",
+        "version" : "2.5.2"
+      }
+    }
+  ],
+  "version" : 3
+}

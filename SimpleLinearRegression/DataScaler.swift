@@ -13,6 +13,9 @@ final class DataScaler {
     
     func zScoreNormalization(_ array: [Double]) -> [Double] {
         calculateStandardDeviationAndMean(array)
+        if standardDeviation == 0 {
+            return array
+        }
         return array.map { ($0 - mean) / standardDeviation }
     }
 

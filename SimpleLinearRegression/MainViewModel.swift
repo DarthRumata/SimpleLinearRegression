@@ -15,6 +15,7 @@ private enum Constants {
 }
 
 @Observable
+@MainActor
 class MainViewModel {
     var w: [Double]
     var b: Double = 0
@@ -37,7 +38,7 @@ class MainViewModel {
     var precisionThreshold: Double = 0.001 {
         didSet {
             Task { @MainActor in
-                await regressionTrainer.updateLearningRate(precisionThreshold)
+                await regressionTrainer.updatePrecisionThreshold(precisionThreshold)
             }
         }
     }
@@ -48,35 +49,46 @@ class MainViewModel {
         }
         didSet {
             Task { @MainActor in
-                await regressionTrainer.updateModel(selectedModel)
-                let w = await regressionTrainer.w
-                let b = await regressionTrainer.b
-                self.w = w
-                self.b = b
-                step = 0
-                isChangingModel = false
+                await self.performModelUpdate {
+                    await self.regressionTrainer.updateModel(self.selectedModel)
+                }
             }
         }
     }
 
-    var useNormalization: Bool = false {
+    var useXNormalization: Bool = false {
         willSet {
             isChangingModel = true
         }
         didSet {
             Task { @MainActor in
-                await regressionTrainer.update(x: currentX, y: currentY)
-                let w = await regressionTrainer.w
-                let b = await regressionTrainer.b
-                self.w = w
-                self.b = b
-                step = 0
-                
-                isChangingModel = false
+                await self.applyNormalizationUpdate()
             }
         }
     }
     
+    var useYNormalization: Bool = false {
+        willSet {
+            isChangingModel = true
+        }
+        didSet {
+            Task { @MainActor in
+                await self.applyNormalizationUpdate()
+            }
+        }
+    }
+    
+    private(set) var loadedDatasets = [Dataset.defaultDataset]
+    var currentDatasetIndex = 0 {
+        willSet {
+            isChangingModel = true
+        }
+        didSet {
+            Task { @MainActor in
+                await self.applyNormalizationUpdate()
+            }
+        }
+    }
     private(set) var step: Int = 0
     private(set) var isTraining: Bool = false
     private(set) var isChangingModel: Bool = false
@@ -86,70 +98,36 @@ class MainViewModel {
     // [Step: (w, b)]
     private(set) var paramsHistory = [(w: [Double], b: Double)]()
     
-    var currentX: [[Double]] {
-        (useNormalization ? xNorm : x).map { [$0] }
+    var currentDataset: Dataset {
+        loadedDatasets[currentDatasetIndex]
     }
-
-    var currentY: [Double] {
-        useNormalization ? yNorm : y
+    
+    var presentableData: (x: [[Double]], y: [Double]) {
+        (
+            x: useXNormalization ? currentDataset.xNorm : currentDataset.x,
+            y: useYNormalization ? currentDataset.yNorm : currentDataset.y
+        )
+    }
+    
+    private var featureCount: Int {
+        presentableData.x.first?.count ?? 0
     }
 
     var currentFormula: String {
-        selectedModel.modelDescription(featureCount: 1)
+        do {
+            return try "y = \(selectedModel.modelDescription(featureCount: featureCount))"
+        } catch {
+            return "Error: \(error)"
+        }
     }
-    
-    var dataPoints: [DataPoint] {
-        zip(currentX.map { $0[0] }, currentY).map(DataPoint.init)
-    }
-    
-    private let x: [Double] = [
-        19, 7.5, 9.3, 10.1, 10, 10.8, 10.4, 10.7, 11.4, 11.3,
-        11.3, 11.5, 12.1, 11.7, 13.2, 13.8, 12.5, 12.9, 13.8, 15,
-        13.5, 14.3, 16.5, 15.7, 17.5, 16.8, 17.2, 17.8, 18.2, 18.2,
-        16.3, 16.2, 19.1, 19, 20, 19, 18.6, 19.4, 17.5, 20,
-        20, 19, 19.3, 20, 20.5, 20, 21, 19, 20.5, 19.8,
-        20.7, 22, 20.4, 18.4, 20.5, 21, 20.5, 21.1, 22, 22,
-        19, 21.5, 23.6, 23, 22.6, 23.5, 22.1, 21.2, 30, 25,
-        22, 23.2, 25.4, 25.9, 25.4, 25.4, 23.6, 24.1, 25, 23,
-        24, 24, 24, 25.2, 26.9, 31.7, 32.7, 34.8, 25.6, 27.8,
-        23.9, 29.5, 36, 26.3, 27.6, 29.5, 26.5, 35.5, 26.8, 27.6,
-        40, 28.4, 26.8, 28.5, 28.7, 29.1, 42, 40, 30.5, 28.5,
-        40.1, 32, 43.2, 31.3, 29.4, 29.4, 30.9, 31.5, 31, 36.5,
-        31.8, 31.4, 34, 34.6, 30.4, 30.4, 31.9, 34, 34.5, 32.7,
-        32, 31.8, 44.8, 33.7, 36.6, 37.1, 32.5, 32.8, 36.9, 36.5,
-        37, 35, 36.2, 38, 48.3, 35, 37.4, 33.5, 37.3, 39.8,
-        40.2, 41.1, 37, 39, 40.1, 52, 56, 56, 59
-    ]
-    
-    private let y: [Double] = [
-        8, 5.9, 6.7, 7, 7.5, 8.7, 9.7, 9.8, 9.8, 9.9,
-        10, 12.2, 12.2, 13.4, 19.7, 19.9, 32, 40, 40, 51.5,
-        55, 60, 69, 70, 78, 78, 80, 85, 85, 87,
-        90, 100, 110, 110, 110, 115, 120, 120, 120, 120,
-        120, 125, 130, 130, 130, 135, 140, 140, 145, 145,
-        145, 145, 150, 150, 150, 150, 160, 160, 161, 169,
-        170, 170, 180, 180, 188, 197, 200, 200, 200, 218,
-        225, 242, 250, 250, 260, 265, 270, 270, 272, 273,
-        290, 290, 300, 300, 300, 300, 300, 300, 300, 306,
-        320, 340, 340, 345, 363, 390, 390, 430, 430, 450,
-        450, 456, 475, 500, 500, 500, 500, 500, 510, 514,
-        540, 540, 556, 567, 575, 600, 600, 610, 620, 650,
-        650, 680, 685, 685, 690, 700, 700, 700, 700, 700,
-        714, 720, 725, 770, 800, 820, 820, 840, 850, 850,
-        900, 900, 920, 925, 950, 950, 955, 975, 1000, 1000,
-        1000, 1000, 1000, 1015, 1100, 1100, 1250, 1550, 1600
-    ]
-    
-    private let xNorm: [Double]
-    private let yNorm: [Double]
     
     private var lastUpdateTime: Date = .distantPast
-    private var pendingUpdate: RegressionUpdate?
+    private var pendingUpdateTask: Task<Void, Never>?
     
     @ObservationIgnored
     private lazy var regressionTrainer = RegressionTrainer(
-        x: currentX,
-        y: currentY,
+        x: presentableData.x,
+        y: presentableData.y,
         w: w,
         b: b,
         learningRate: learningRate,
@@ -161,20 +139,43 @@ class MainViewModel {
     
     init() {
         let defaultModel = RegressionModel.simpleLinear
-        let w = defaultModel.defaultWeights(featureCount: 1)
+        let w = try! defaultModel.defaultWeights(featureCount: 1)
         selectedModel = defaultModel
         self.w = w
-        xNorm = dataScaler.zScoreNormalization(x)
-        yNorm = dataScaler.zScoreNormalization(y)
         
-        Task {
-            await costHistory.append(regressionTrainer.currentCost)
+        Task { @MainActor in
+            let updates = await regressionTrainer.stateUpdates()
+            
+            costHistory.append(await regressionTrainer.currentCost)
+            
+            for await update in updates {
+                pendingUpdateTask?.cancel()
+                
+                let now = Date()
+                let elapsedTime = now.timeIntervalSince(lastUpdateTime)
+                if elapsedTime >= Constants.updateInterval {
+                    await applyPendingUpdate(update)
+                    lastUpdateTime = now
+                } else {
+                    pendingUpdateTask = Task {
+                        if Task.isCancelled { return }
+                        do {
+                            try await Task.sleep(for: .seconds(Constants.updateInterval))
+                            try Task.checkCancellation()
+                        } catch {
+                            // print(error)
+                        }
+                        
+                        await applyPendingUpdate(update)
+                    }
+                }
+            }
         }
     }
     
     func nextStepTapped() {
         Task { @MainActor in
-            await regressionTrainer.runOneStep()
+            try await regressionTrainer.runOneStep()
             
             let w = await regressionTrainer.w
             let b = await regressionTrainer.b
@@ -191,14 +192,11 @@ class MainViewModel {
     }
     
     func resetTapped() {
-        costHistory.removeAll()
-        paramsHistory.removeAll()
-        
         Task { @MainActor in
+            costHistory.removeAll()
+            paramsHistory.removeAll()
+            
             await regressionTrainer.resetTraining()
-            w = await regressionTrainer.w
-            b = await regressionTrainer.b
-            step = 0
         }
     }
     
@@ -206,24 +204,7 @@ class MainViewModel {
         isTraining = true
         
         Task {
-            let updates = await regressionTrainer.startTraining()
-            
-            for await update in updates {
-                pendingUpdate = update
-                let now = Date()
-                if now.timeIntervalSince(lastUpdateTime) >= Constants.updateInterval {
-                    await applyPendingUpdate(update)
-                    lastUpdateTime = now
-                }
-            }
-            
-            if let pendingUpdate {
-                await applyPendingUpdate(pendingUpdate)
-            }
-            
-            await MainActor.run {
-                self.isTraining = false
-            }
+            await regressionTrainer.startTraining()
         }
     }
     
@@ -233,15 +214,58 @@ class MainViewModel {
         }
     }
     
+    func makeDatasetPickerViewModel() -> DatasetPickerViewModel {
+        .init(onUpdateChangingModel: { [weak self] isChangingModel in
+            self?.isChangingModel = isChangingModel
+        }, onLoadDataset: { [weak self] dataset in
+            guard let self else { return }
+            
+            self.loadedDatasets.append(dataset)
+            self.currentDatasetIndex = self.loadedDatasets.count - 1
+        }, onDeleteDataset: { [weak self] in
+            guard let self else { return }
+            
+            guard self.currentDatasetIndex != 0 else {
+                return
+            }
+            
+            self.currentDatasetIndex -= 1
+            self.loadedDatasets.removeLast()
+        })
+    }
+    
     private func applyPendingUpdate(_ update: RegressionUpdate) async {
+        if Task.isCancelled { return }
+        
+        let isTraining = await regressionTrainer.isTraining
+        
         await MainActor.run {
+            if Task.isCancelled { return }
+            
             self.w = update.weights
             self.b = update.bias
             self.costHistory.append(update.cost)
             self.paramsHistory.append((update.weights, update.bias))
             self.step = update.step
+            self.isTraining = isTraining
             print("Applied update at step \(update.step), cost: \(update.cost)")
-            pendingUpdate = nil // Clear after applying
         }
+    }
+    
+    private func applyNormalizationUpdate() async {
+        let data = presentableData
+        await performModelUpdate {
+            await self.regressionTrainer.update(preparedDataset: data)
+        }
+    }
+    
+    @MainActor
+    private func performModelUpdate(_ updateAction: @escaping () async -> Void) async {
+        costHistory.removeAll()
+        paramsHistory.removeAll()
+        
+        await updateAction()
+        
+        isChangingModel = false
     }
 }
