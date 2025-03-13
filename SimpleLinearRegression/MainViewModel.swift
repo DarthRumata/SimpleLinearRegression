@@ -92,6 +92,7 @@ class MainViewModel {
     private(set) var step: Int = 0
     private(set) var isTraining: Bool = false
     private(set) var isChangingModel: Bool = false
+    private(set) var r2Score = 0.0
     
     // [Step: Cost]
     private(set) var costHistory = [Double]()
@@ -248,6 +249,7 @@ class MainViewModel {
             self.paramsHistory.append((update.weights, update.bias))
             self.step = update.step
             self.isTraining = isTraining
+            r2Score = (try? self.selectedModel.calculateR2(x: presentableData.x, weights: w, bias: b, y: presentableData.y)) ?? 0
             print("Applied update at step \(update.step), cost: \(update.cost)")
         }
     }

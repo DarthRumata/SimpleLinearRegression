@@ -13,20 +13,34 @@ struct MainView: View {
     var body: some View {
         VStack(alignment: .leading) {
             makeControlPanel()
-                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Text("Quality:")
+                    .bold()
+                Text("R2: \(viewModel.r2Score.toR2Percentage())")
+            }
             
             HStack {
-                PointsAndRegressionChartView(
-                    x: viewModel.presentableData.x,
-                    y: viewModel.presentableData.y,
-                    model: viewModel.selectedModel,
-                    weights: viewModel.w,
-                    bias: viewModel.b
-                )
+                if viewModel.selectedModel.regressionType == .logistic {
+                    LogisticRegressionChartView(
+                        x: viewModel.presentableData.x,
+                        y: viewModel.presentableData.y,
+                        model: viewModel.selectedModel,
+                        weights: viewModel.w,
+                        bias: viewModel.b
+                    )
+                } else {
+                    PointsAndRegressionChartView(
+                        x: viewModel.presentableData.x,
+                        y: viewModel.presentableData.y,
+                        model: viewModel.selectedModel,
+                        weights: viewModel.w,
+                        bias: viewModel.b
+                    )
+                }
                     
                 ParametersChartView(parametersHistory: viewModel.paramsHistory)
             }
-            .frame(height: 400)
+            .frame(height: 350)
                 
             CostChartView(
                 costs: viewModel.costHistory
@@ -39,7 +53,7 @@ struct MainView: View {
     }
     
     @ViewBuilder func makeControlPanel() -> some View {
-        let currentDatasetBinding: Binding<Dataset> = Binding<Dataset>(
+        let currentDatasetBinding = Binding<Dataset>(
             get: { viewModel.currentDataset },
             set: {
                 let newIndex = viewModel.loadedDatasets.firstIndex(of: $0)
@@ -112,6 +126,8 @@ struct MainView: View {
             .disabled(viewModel.isTraining)
             
             Text("Model function: \(viewModel.currentFormula)")
+                .lineLimit(3)
+                .multilineTextAlignment(.leading)
         }
     }
     
@@ -175,34 +191,45 @@ struct MainView: View {
     }
     
     @ViewBuilder private func makeModelParametersView() -> some View {
-        HStack(spacing: 5) {
-            let bText = Binding<String>(
-                get: { String(viewModel.b) },
-                set: { viewModel.b = Double($0) ?? 0 }
-            )
+        // Number of weights per row; adjust to 4 or 5 as desired.
+        let weightsPerRow = 10
+        // Pair up each weight with its index.
+        let weightPairs = Array(zip(viewModel.w.indices, viewModel.w))
+        // Chunk the pairs into rows.
+        let chunkedWeights = weightPairs.chunked(into: weightsPerRow)
             
-            ForEach(Array(zip(viewModel.w.indices, viewModel.w)), id: \.0) { i, wi in
-                let wiText = Binding<String>(
-                    get: { String(wi) },
-                    set: { viewModel.w[i] = Double($0) ?? 0 }
-                )
-                Text("W\(i) =")
-                TextField(text: wiText) {
-                    Text("W\(i)")
+        Grid(horizontalSpacing: 10, verticalSpacing: 10) {
+            // Create a grid row for each chunk of weights.
+            ForEach(chunkedWeights.indices, id: \.self) { rowIndex in
+                GridRow {
+                    ForEach(chunkedWeights[rowIndex], id: \.0) { i, wi in
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("w\(i + 1) =")
+                            // Create a binding for each weight.
+                            let wiText = Binding<String>(
+                                get: { String(wi) },
+                                set: { viewModel.w[i] = Double($0) ?? 0 }
+                            )
+                            TextField("w\(i + 1)", text: wiText)
+                                .frame(width: 70)
+                                .disabled(viewModel.isTraining)
+                        }
+                    }
+                    
+                    if rowIndex == chunkedWeights.indices.last! {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("b =")
+                            let bText = Binding<String>(
+                                get: { String(viewModel.b) },
+                                set: { viewModel.b = Double($0) ?? 0 }
+                            )
+                            TextField("b", text: bText)
+                                .frame(width: 70)
+                                .disabled(viewModel.isTraining)
+                        }
+                    }
                 }
-                .frame(width: 70)
-                .padding(.trailing, 15)
-                .disabled(viewModel.isTraining)
             }
-            
-            Text("B = ")
-            TextField(text: bText) {
-                Text("B")
-            }
-            .frame(width: 70)
-            .disabled(viewModel.isTraining)
-
-            Spacer()
         }
     }
 }

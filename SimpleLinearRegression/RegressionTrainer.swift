@@ -137,7 +137,7 @@ actor RegressionTrainer {
         let (wGradient, bGradient) = try selectedModel.calculateGradient(x: x, y: y, weights: w, bias: b)
        // print("Gradients: \(wGradient), \(bGradient)")
         for j in 0..<w.count {
-            let regularizationValue = lambda * w[j] / Double(x.count)
+            let regularizationValue = lambda * w[j]
             w[j] -= learningRate * (wGradient[j] + regularizationValue)
         }
         
@@ -145,7 +145,7 @@ actor RegressionTrainer {
     }
     
     private func calculateAndUpdateCost() async throws {
-        let regularizationCost = lambda * (w.reduce(0) { $0 + $1 * $1 }) / 2 / Double(x.count)
+        let regularizationCost = lambda * (w.reduce(0) { $0 + $1 * $1 }) / 2
         //print("Regularized cost:", regularizationCost)
         currentCost = try selectedModel.calculateCost(x: x, y: y, weights: w, bias: b) + regularizationCost
     }
